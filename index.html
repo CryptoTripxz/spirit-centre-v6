@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#07091A">
+<meta name="description" content="Spirit Centre - Daily Devotional App">
+<link rel="manifest" href="data:application/json,{%22name%22:%22Spirit%20Centre%22,%22short_name%22:%22Spirit%20Centre%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%2307091A%22,%22theme_color%22:%22%237B4FD4%22}">
+<title>Spirit Centre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500;700&family=Syne:wght@700;800&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:#07091A;}
+:root{
+  --sp:#7B4FD4;--sp2:#A78BFA;--sp-pale:rgba(123,79,212,0.12);--sp-glow:rgba(123,79,212,0.32);
+  --au:#C49820;--au2:#E8B830;--em:#15A854;--em-pale:rgba(21,168,84,0.10);--em-glow:rgba(21,168,84,0.28);
+  --ro:#E8547A;--ro-pale:rgba(232,84,122,0.10);
+  --t1:#1A1E2E;--t2:#3D4460;--t3:#7A82A8;
+  --card:#FFFFFF;--sh:0 2px 16px rgba(0,0,0,0.07);
+}
+
+/* ── APP SHELL ── */
+#app{position:relative;width:100%;max-width:430px;height:100%;margin:0 auto;
+  background:radial-gradient(ellipse at 50% 0%,rgba(100,60,200,0.48) 0%,transparent 58%),
+             radial-gradient(ellipse at 12% 82%,rgba(196,120,32,0.20) 0%,transparent 45%),
+             linear-gradient(165deg,#07091A 0%,#0D1B3E 42%,#13113A 72%,#0A1628 100%);
+  display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── STARS ── */
+#stars{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.star{position:absolute;border-radius:50%;background:#fff;animation:twinkle linear infinite;}
+@keyframes twinkle{0%,100%{opacity:0.12;transform:scale(1);}50%{opacity:0.88;transform:scale(1.6);}}
+
+/* ── STATUS BAR ── */
+#sbar{flex-shrink:0;height:44px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;border-bottom:1px solid rgba(255,255,255,0.06);z-index:10;
+  background:rgba(7,9,26,0.92);backdrop-filter:blur(12px);}
+.sbar-time{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:rgba(255,255,255,0.88);}
+.sbar-right{display:flex;align-items:center;gap:8px;}
+.sbar-btn{padding:4px 12px;border-radius:100px;border:1px solid rgba(123,79,212,0.30);
+  background:rgba(123,79,212,0.12);font-size:10px;font-weight:700;color:var(--sp2);
+  cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
+.sbar-btn:active{transform:scale(0.92);}
+#offline-indicator{padding:4px 12px;border-radius:100px;border:1px solid rgba(21,168,84,0.30);
+  background:rgba(21,168,84,0.12);font-size:10px;font-weight:700;color:#15A854;
+  font-family:'DM Sans',sans-serif;display:none;}
+#offline-indicator.show{display:block;}
+
+/* ── ACTION BAR ── */
+#action-bar{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 12px;
+  background:rgba(7,9,26,0.88);border-bottom:1px solid rgba(255,255,255,0.06);backdrop-filter:blur(8px);}
+.ab-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;
+  color:rgba(255,255,255,0.28);margin-right:auto;}
+.ab-btn{display:flex;align-items:center;gap:3px;padding:4px 11px;border-radius:100px;
+  border:1.5px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.05);
+  font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;color:rgba(255,255,255,0.62);
+  cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.ab-btn:active{transform:scale(0.90);}
+.ab-btn:hover{border-color:var(--sp2);color:var(--sp2);}
+
+/* ── TOAST NOTIFICATIONS ── */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(7,9,26,0.95);
+  color:#fff;padding:10px 18px;border-radius:100px;font-size:11px;font-weight:600;
+  opacity:0;animation:toastIn 0.3s ease forwards;pointer-events:none;max-width:85%;
+  border:1px solid rgba(123,79,212,0.25);backdrop-filter:blur(10px);z-index:10000;}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px);}
+  to{opacity:1;transform:translateX(-50%) translateY(0);}}
+
+/* ── SECTION COLLAPSE TOGGLE ── */
+.sp-sec-toggle{cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex:1;}
+.sp-collapse-icon{width:16px;height:16px;display:flex;align-items:center;justify-content:center;
+  color:var(--sp2);font-size:12px;transition:transform 0.3s ease;}
+.sp-sec-toggle.collapsed .sp-collapse-icon{transform:rotate(-90deg);}
+.sp-sec-content{max-height:1000px;overflow:hidden;transition:max-height 0.3s ease;}
+.sp-sec-content.collapsed{max-height:0;}
+
+/* ── MAIN SCROLL ── */
+#main{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;padding-bottom:20px;position:relative;z-index:1;}
+#main::-webkit-scrollbar{display:none;}
+
+/* ── HEADER ── */
+.sp-hdr{padding:18px 16px 8px;display:flex;align-items:flex-start;justify-content:space-between;}
+.sp-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#E8E4FF;line-height:1.1;}
+.sp-sub{font-size:10px;color:rgba(200,190,255,0.42);margin-top:3px;font-weight:500;}
+.candle-btn{padding:7px 14px;border-radius:100px;border:1px solid rgba(123,79,212,0.30);
+  background:rgba(123,79,212,0.12);font-size:11px;font-weight:700;color:var(--sp2);
+  cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.22s cubic-bezier(0.34,1.56,0.64,1);}
+.candle-btn:active{transform:scale(0.92);}
+.candle-btn.lit{background:rgba(255,200,80,0.14);border-color:rgba(255,200,80,0.35);color:rgba(255,220,100,0.88);}
+
+/* ── CANDLE OVERLAY ── */
+#candle-overlay{display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);
+  align-items:center;justify-content:center;flex-direction:column;gap:20px;}
+#candle-overlay.open{display:flex;}
+.candle-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.candle-flame{width:28px;height:50px;position:relative;margin-bottom:-4px;}
+.flame-outer{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:28px;height:50px;background:radial-gradient(ellipse at 50% 80%,#FF8C00,#FFD700 40%,rgba(255,220,100,0) 80%);
+  border-radius:50% 50% 40% 40%;animation:flicker 1.5s ease-in-out infinite alternate;filter:blur(1px);}
+.flame-inner{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+  width:14px;height:28px;background:radial-gradient(ellipse at 50% 80%,#fff,#FFE566 40%,rgba(255,200,80,0) 80%);
+  border-radius:50% 50% 35% 35%;animation:flicker 0.9s ease-in-out infinite alternate-reverse;}
+@keyframes flicker{0%{transform:translateX(-50%) scaleX(1);}100%{transform:translateX(-50%) scaleX(0.88) rotate(2deg);}}
+.candle-body{width:20px;height:70px;background:linear-gradient(90deg,#f5f0e8,#fff9f0 40%,#ede5d0);
+  border-radius:3px 3px 2px 2px;box-shadow:0 2px 14px rgba(255,200,80,0.35);}
+.candle-base{width:30px;height:8px;background:linear-gradient(90deg,#d4c8b0,#ede5d0);border-radius:0 0 4px 4px;}
+.candle-glow{position:absolute;width:80px;height:80px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,200,80,0.35),transparent 70%);top:-20px;left:50%;transform:translateX(-50%);}
+.candle-verse{max-width:280px;text-align:center;}
+.candle-verse-text{font-family:'Cinzel',serif;font-size:13px;color:rgba(240,236,255,0.88);
+  line-height:1.8;font-style:italic;}
+.candle-verse-ref{font-family:'DM Mono',monospace;font-size:10px;color:var(--sp2);margin-top:8px;}
+.candle-close{padding:10px 28px;border-radius:100px;border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.06);font-family:'DM Sans',sans-serif;font-size:13px;
+  font-weight:700;color:rgba(255,255,255,0.7);cursor:pointer;}
+.candle-close:active{transform:scale(0.95);}
+
+/* ── VERSE CARD ── */
+.sp-verse-card{margin:4px 14px 10px;border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02));
+  border:1px solid rgba(123,79,212,0.30);padding:18px 16px;position:relative;overflow:hidden;}
+.sp-verse-card::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 78% 18%,rgba(123,79,212,0.20),transparent 60%);}
+.sp-verse-ico{font-size:28px;position:relative;z-index:1;display:block;margin-bottom:10px;
+  animation:vGlow 3s ease-in-out infinite;}
+@keyframes vGlow{0%,100%{filter:drop-shadow(0 0 5px rgba(255,220,80,0.5));}
+  50%{filter:drop-shadow(0 0 18px rgba(255,220,80,0.95));}}
+.sp-verse-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;
+  text-transform:uppercase;color:rgba(200,190,255,0.42);position:relative;z-index:1;margin-bottom:8px;}
+.sp-verse-text{font-family:'Cinzel',serif;font-size:14px;color:rgba(240,236,255,0.92);
+  line-height:1.80;position:relative;z-index:1;font-style:italic;}
+.sp-verse-ref{font-family:'DM Mono',monospace;font-size:10px;color:var(--sp2);
+  margin-top:10px;position:relative;z-index:1;}
+.sp-verse-btns{margin-top:11px;position:relative;z-index:1;display:flex;gap:7px;flex-wrap:wrap;}
+.sp-vbtn{padding:6px 14px;border-radius:100px;border:1px solid rgba(123,79,212,0.30);
+  background:rgba(123,79,212,0.12);font-size:10px;font-weight:700;color:var(--sp2);
+  cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
+.sp-vbtn:active{transform:scale(0.90);}
+.sp-vbtn-gold{border-color:rgba(255,220,80,0.28);background:rgba(255,220,80,0.09);
+  color:rgba(255,220,120,0.84);}
+.sp-vbtn-fav{border-color:rgba(232,84,122,0.30);background:rgba(232,84,122,0.10);color:#FF7A9A;}
+.sp-vbtn-fav.active{background:rgba(232,84,122,0.25);}
+
+/* ── 7-DAY STREAK ── */
+.sp-streak-row{display:flex;gap:5px;justify-content:center;margin:0 14px 10px;}
+.sp-streak-day{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;}
+.sp-sd-circle{width:34px;height:34px;border-radius:50%;border:1.5px solid rgba(123,79,212,0.22);
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  background:rgba(255,255,255,0.03);transition:all 0.3s;}
+.sp-sd-circle.lit{background:linear-gradient(135deg,rgba(123,79,212,0.38),rgba(100,60,200,0.55));
+  border-color:rgba(123,79,212,0.55);box-shadow:0 0 12px rgba(123,79,212,0.45);}
+.sp-sd-lbl{font-family:'DM Mono',monospace;font-size:7px;color:rgba(200,190,255,0.32);}
+
+/* ── SECTIONS ── */
+.sp-sec{margin:0 14px 10px;position:relative;z-index:1;}
+.sp-sec-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;
+  color:rgba(200,190,255,0.38);margin-bottom:7px;display:flex;align-items:center;gap:8px;}
+.sp-sec-lbl-line{flex:1;height:1px;background:rgba(255,255,255,0.06);}
+
+/* ── PRAYER LIST ── */
+.sp-prayer-item{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:15px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(123,79,212,0.16);
+  cursor:pointer;transition:all 0.22s;-webkit-tap-highlight-color:transparent;margin-bottom:6px;}
+.sp-prayer-item.prayed{background:rgba(123,79,212,0.13);border-color:rgba(123,79,212,0.32);}
+.sp-p-chk{width:22px;height:22px;border-radius:7px;border:2px solid rgba(123,79,212,0.42);
+  display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;
+  transition:all 0.22s cubic-bezier(0.34,1.56,0.64,1);color:#fff;}
+.sp-prayer-item.prayed .sp-p-chk{background:var(--sp);border-color:var(--sp);}
+.sp-prayer-item.prayed .sp-p-chk::after{content:'✓';}
+.sp-p-text{font-size:12.5px;font-weight:600;color:rgba(230,225,255,0.82);flex:1;line-height:1.3;}
+.sp-prayer-item.prayed .sp-p-text{color:rgba(160,150,200,0.55);text-decoration:line-through;}
+.sp-prayer-count{font-family:'DM Mono',monospace;font-size:9px;
+  background:rgba(123,79,212,0.16);border:1px solid rgba(123,79,212,0.28);
+  border-radius:100px;padding:2px 8px;color:var(--sp2);}
+.sp-add-prayer-btn{width:100%;padding:10px;border:1.5px dashed rgba(123,79,212,0.22);
+  border-radius:14px;background:none;font-family:'DM Sans',sans-serif;font-size:12px;
+  color:rgba(200,190,255,0.38);cursor:pointer;margin-top:5px;transition:all 0.2s;}
+.sp-add-prayer-btn:hover{border-color:var(--sp2);color:var(--sp2);}
+
+/* ── DEVOTION CHIPS ── */
+.sp-dev-row{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ═══ AUDIO TAB ═══ */
+#audio-tab{padding:20px 14px;}
+.audio-player-new{background:linear-gradient(135deg,rgba(123,79,212,0.08),rgba(167,139,250,0.04));border:2px solid rgba(123,79,212,0.2);border-radius:20px;padding:20px;text-align:center;}
+.audio-player-new .title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:8px;}
+.audio-player-new .subtitle{font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:20px;}
+.audio-track-list{display:flex;flex-direction:column;gap:10px;margin:20px 0;}
+.audio-track-btn{padding:12px;border:1.5px solid rgba(123,79,212,0.3);border-radius:12px;background:rgba(123,79,212,0.05);color:rgba(255,255,255,0.8);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;text-align:left;}
+.audio-track-btn:hover{background:rgba(123,79,212,0.15);border-color:rgba(123,79,212,0.5);}
+.audio-track-btn.active{background:linear-gradient(135deg,#7B4FD4,#A78BFA);border-color:#7B4FD4;color:#fff;box-shadow:0 0 20px rgba(123,79,212,0.4);}
+.audio-controls-new{display:flex;align-items:center;justify-content:center;gap:15px;margin:20px 0;padding:15px;background:rgba(0,0,0,0.2);border-radius:15px;}
+.audio-play-btn-new{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#7B4FD4,#A78BFA);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.2s;box-shadow:0 4px 15px rgba(123,79,212,0.3);}
+.audio-play-btn-new:active{transform:scale(0.95);}
+.audio-play-btn-new:hover{box-shadow:0 6px 25px rgba(123,79,212,0.5);}
+.audio-info-new{flex:1;text-align:left;}
+.audio-now-playing{font-size:13px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:4px;}
+.audio-status{font-size:11px;color:rgba(255,255,255,0.6);}
+.audio-slider-new{width:100%;height:4px;border-radius:2px;background:rgba(255,255,255,0.1);-webkit-appearance:none;appearance:none;cursor:pointer;margin:15px 0;}
+.audio-slider-new::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;border-radius:50%;background:#A78BFA;cursor:pointer;}
+.audio-slider-new::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#A78BFA;cursor:pointer;border:none;}
+.audio-time-display{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.6);font-family:'DM Mono',monospace;}
+.audio-empty{padding:30px 20px;text-align:center;color:rgba(255,255,255,0.5);}
+.audio-empty-icon{font-size:48px;margin-bottom:15px;}
+.audio-empty-text{font-size:14px;}
+
+.sp-dev-chip{padding:7px 13px;border-radius:100px;background:rgba(255,255,255,0.04);
+  border:1.5px solid rgba(123,79,212,0.16);font-size:11px;font-weight:600;
+  color:rgba(200,190,255,0.50);cursor:pointer;transition:all 0.22s cubic-bezier(0.34,1.56,0.64,1);}
+.sp-dev-chip.done{background:rgba(123,79,212,0.18);border-color:rgba(123,79,212,0.40);color:var(--sp2);}
+.sp-dev-chip:active{transform:scale(0.90);}
+.sp-dev-chip.done::before{content:'✓ ';}
+
+/* ── READING PLAN ── */
+.rp-card{background:rgba(255,255,255,0.04);border:1px solid rgba(123,79,212,0.20);
+  border-radius:18px;padding:14px;}
+.rp-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.rp-today{font-size:12.5px;font-weight:700;color:rgba(230,225,255,0.82);}
+.rp-pct{font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,190,255,0.38);}
+.rp-bar-track{height:5px;background:rgba(255,255,255,0.08);border-radius:3px;
+  overflow:hidden;margin-bottom:11px;}
+.rp-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--sp),var(--sp2));
+  transition:width 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+.rp-dots{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:11px;}
+.rp-dot{width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(123,79,212,0.22);
+  display:flex;align-items:center;justify-content:center;font-size:8.5px;
+  font-family:'DM Mono',monospace;font-weight:700;color:rgba(200,190,255,0.38);
+  cursor:pointer;background:rgba(255,255,255,0.03);transition:all 0.2s;}
+.rp-dot.done{background:var(--sp);border-color:var(--sp);color:#fff;font-size:10px;}
+.rp-dot.today{border-color:var(--sp2);background:rgba(123,79,212,0.24);color:var(--sp2);}
+.rp-dot:active{transform:scale(0.85);}
+.rp-mark-btn{width:100%;padding:10px;border:none;border-radius:12px;
+  background:linear-gradient(135deg,var(--sp),var(--sp2));color:#fff;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;
+  box-shadow:0 4px 16px var(--sp-glow);transition:transform 0.15s,box-shadow 0.15s;}
+.rp-mark-btn:active{transform:scale(0.96);}
+
+/* ── GRATITUDE JOURNAL ── */
+.sp-grat-card{margin:0 14px 10px;border-radius:20px;
+  background:rgba(255,255,255,0.03);border:1px solid rgba(123,79,212,0.18);overflow:hidden;}
+.sp-grat-hdr{padding:12px 14px 0;font-size:13px;font-weight:700;color:rgba(230,225,255,0.80);}
+.sp-grat-ta{width:100%;padding:10px 14px;border:none;outline:none;resize:none;
+  font-family:'DM Sans',sans-serif;font-size:13px;color:rgba(230,225,255,0.75);
+  background:transparent;min-height:88px;line-height:1.65;}
+.sp-grat-ta::placeholder{color:rgba(200,190,255,0.22);font-style:italic;}
+.sp-grat-footer{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px 12px;border-top:1px solid rgba(123,79,212,0.10);}
+.sp-grat-count{font-family:'DM Mono',monospace;font-size:9.5px;color:rgba(200,190,255,0.30);}
+.sp-grat-save{padding:8px 18px;border:none;border-radius:11px;
+  background:linear-gradient(135deg,var(--sp),var(--sp2));color:#fff;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;
+  box-shadow:0 3px 14px var(--sp-glow);}
+.sp-grat-save:active{transform:scale(0.95);}
+
+/* ── PAST REFLECTIONS ── */
+.sp-grat-entry{padding:10px 13px;border-radius:14px;
+  background:rgba(123,79,212,0.07);border:1px solid rgba(123,79,212,0.14);margin-bottom:6px;}
+.sp-grat-entry-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.sp-grat-entry-date{font-family:'DM Mono',monospace;font-size:8.5px;color:rgba(200,190,255,0.32);}
+.sp-grat-entry-del{font-size:12px;cursor:pointer;opacity:0.22;transition:opacity 0.2s;background:none;border:none;color:rgba(200,190,255,0.7);}
+.sp-grat-entry-del:hover{opacity:0.65;}
+.sp-grat-entry-text{font-size:12px;color:rgba(220,215,255,0.72);line-height:1.6;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+24px);left:50%;
+  transform:translateX(-50%) translateY(100px) scale(0.94);
+  background:rgba(20,14,50,0.97);border:1px solid rgba(123,79,212,0.28);
+  border-radius:100px;padding:11px 22px;font-family:'DM Sans',sans-serif;font-size:12.5px;
+  color:rgba(240,235,255,0.94);white-space:nowrap;
+  box-shadow:0 8px 40px rgba(0,0,0,0.55),0 0 0 1px rgba(123,79,212,0.12);
+  z-index:99999;transition:transform 0.40s cubic-bezier(0.34,1.56,0.64,1),opacity 0.38s ease;
+  pointer-events:none;opacity:0;}
+#toast.show{transform:translateX(-50%) translateY(0) scale(1);opacity:1;pointer-events:auto;cursor:pointer;}
+
+/* ── ADD PRAYER SHEET ── */
+#add-prayer-modal{display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,0.60);backdrop-filter:blur(8px);align-items:flex-end;}
+#add-prayer-modal.open{display:flex;}
+#add-fav-verse-modal{display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,0.60);backdrop-filter:blur(8px);align-items:flex-end;}
+#add-fav-verse-modal.open{display:flex;}
+.ap-sheet{background:linear-gradient(180deg,#1A1040,#120D30);
+  border:1px solid rgba(123,79,212,0.28);border-radius:26px 26px 0 0;
+  padding:20px 18px calc(env(safe-area-inset-bottom,20px)+20px);
+  width:100%;max-width:430px;margin:0 auto;box-shadow:0 -14px 50px rgba(0,0,0,0.5);}
+.ap-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;
+  color:rgba(230,225,255,0.90);margin-bottom:13px;}
+.ap-inp{width:100%;padding:12px 14px;border:1.5px solid rgba(123,79,212,0.28);border-radius:14px;
+  background:rgba(123,79,212,0.08);color:rgba(230,225,255,0.88);
+  font-family:'DM Sans',sans-serif;font-size:14px;outline:none;}
+.ap-inp:focus{border-color:var(--sp2);box-shadow:0 0 0 3px var(--sp-pale);}
+.ap-inp::placeholder{color:rgba(200,190,255,0.28);}
+.ap-btns{display:flex;gap:8px;margin-top:12px;}
+.ap-cancel{flex:1;padding:12px;border:1.5px solid rgba(255,255,255,0.10);border-radius:13px;
+  background:rgba(255,255,255,0.05);font-family:'DM Sans',sans-serif;font-size:13px;
+  font-weight:600;color:rgba(200,190,255,0.55);cursor:pointer;}
+.ap-save{flex:2;padding:12px;border:none;border-radius:13px;
+  background:linear-gradient(135deg,var(--sp),var(--sp2));font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 4px 16px var(--sp-glow);}
+.ap-save:active{transform:scale(0.96);}
+
+/* ── SHARE/EXPORT SHEET ── */
+#export-sheet{display:none;position:fixed;inset:0;z-index:9998;
+  background:rgba(0,0,0,0.60);backdrop-filter:blur(8px);align-items:flex-end;}
+#export-sheet.open{display:flex;}
+.es-body{background:linear-gradient(180deg,#1A1040,#120D30);
+  border:1px solid rgba(123,79,212,0.28);border-radius:26px 26px 0 0;
+  padding:20px 18px calc(env(safe-area-inset-bottom,20px)+20px);
+  width:100%;max-width:430px;margin:0 auto;box-shadow:0 -14px 50px rgba(0,0,0,0.5);}
+.es-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;
+  color:rgba(230,225,255,0.90);margin-bottom:14px;}
+.es-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.es-btn{padding:14px 10px;border-radius:16px;border:1.5px solid rgba(123,79,212,0.24);
+  background:rgba(123,79,212,0.09);font-family:'DM Sans',sans-serif;font-size:12px;
+  font-weight:700;color:var(--sp2);cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;gap:6px;transition:all 0.2s;}
+.es-btn:active{transform:scale(0.94);}
+.es-btn:hover{background:rgba(123,79,212,0.18);border-color:var(--sp2);}
+.es-btn-ico{font-size:22px;}
+.es-cancel{width:100%;margin-top:10px;padding:12px;border:1.5px solid rgba(255,255,255,0.08);
+  border-radius:13px;background:rgba(255,255,255,0.04);font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:600;color:rgba(200,190,255,0.45);cursor:pointer;}
+
+/* ── AUDIO PLAYER ── */
+.sp-audio-card{margin:4px 14px 10px;border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02));
+  border:1px solid rgba(196,152,32,0.35);padding:16px 16px 14px;position:relative;overflow:hidden;}
+.sp-audio-card::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 20% 20%,rgba(196,152,32,0.15),transparent 60%);}
+.sp-audio-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;
+  text-transform:uppercase;color:rgba(200,190,255,0.42);position:relative;z-index:1;margin-bottom:6px;}
+.sp-audio-title{font-family:'Cinzel',serif;font-size:13px;color:rgba(240,236,255,0.90);
+  line-height:1.5;position:relative;z-index:1;margin-bottom:12px;}
+.sp-audio-title span{color:var(--au2);font-style:italic;}
+.sp-audio-controls{display:flex;align-items:center;gap:10px;position:relative;z-index:1;}
+.sp-audio-play{width:40px;height:40px;border-radius:50%;border:none;flex-shrink:0;
+  background:linear-gradient(135deg,var(--au),var(--au2));
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:0 4px 16px rgba(196,152,32,0.40);transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);}
+.sp-audio-play:active{transform:scale(0.90);}
+.sp-audio-play svg{width:16px;height:16px;fill:#fff;margin-left:2px;}
+.sp-audio-play.playing svg{margin-left:0;}
+.sp-audio-right{flex:1;display:flex;flex-direction:column;gap:6px;}
+.sp-audio-seek{width:100%;-webkit-appearance:none;appearance:none;height:4px;
+  border-radius:2px;background:rgba(255,255,255,0.10);outline:none;cursor:pointer;}
+.sp-audio-seek::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+  border-radius:50%;background:var(--au2);cursor:pointer;
+  box-shadow:0 0 6px rgba(196,152,32,0.55);}
+.sp-audio-seek::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+  background:var(--au2);border:none;cursor:pointer;box-shadow:0 0 6px rgba(196,152,32,0.55);}
+.sp-audio-time{display:flex;gap:4px;font-family:'DM Mono',monospace;font-size:9px;
+  color:rgba(200,190,255,0.38);margin-top:2px;}
+.sp-audio-cur{flex:1;}
+.sp-audio-dur{flex:1;text-align:right;}
+.sp-audio-tracks{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.sp-audio-track{padding:6px 12px;border-radius:100px;border:1.5px solid rgba(196,152,32,0.22);
+  background:rgba(255,255,255,0.03);font-family:'DM Sans',sans-serif;font-size:10px;
+  font-weight:600;color:rgba(200,190,255,0.48);cursor:pointer;transition:all 0.2s;}
+.sp-audio-track.active{border-color:var(--au2);background:rgba(196,152,32,0.12);color:var(--au2);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stars"></div>
+  <div id="sbar">
+    <div class="sbar-time" id="sbar-time"></div>
+    <div class="sbar-right">
+      <div id="offline-indicator">📱 Offline</div>
+    </div>
+  </div>
+  <div id="action-bar">
+    <span class="ab-lbl">Spirit Centre</span>
+    <button class="ab-btn" onclick="toggleAudioTab()" title="Audio">🎵 Audio</button>
+    <button class="ab-btn" onclick="shareApp()" title="Share">↑ Share</button>
+    <button class="ab-btn" onclick="saveToLocal()" title="Save">💾 Save</button>
+    <button class="ab-btn" onclick="exportPDF()" title="Export PDF">📄 PDF</button>
+    <button class="ab-btn" onclick="captureScreenshot()" title="Screenshot">📸 Shot</button>
+  </div>
+  <div id="main">
+    <div class="sp-hdr">
+      <div>
+        <div class="sp-title">Spirit Centre</div>
+        <div class="sp-sub">Daily Devotional</div>
+      </div>
+      <button class="candle-btn" id="candle-btn" onclick="openCandle()">🕯️ Candle</button>
+    </div>
+    <div class="sp-verse-card">
+      <div class="sp-verse-ico">⭐</div>
+      <div class="sp-verse-label">Verse of the day</div>
+      <div class="sp-verse-text" id="sp-verse-text"></div>
+      <div class="sp-verse-ref" id="sp-verse-ref"></div>
+      <div class="sp-verse-btns">
+        <button class="sp-vbtn sp-vbtn-gold" onclick="readVerseAloud()">🔊 Speak</button>
+        <button class="sp-vbtn sp-vbtn-fav" id="sp-vbtn-fav" onclick="toggleFavourite()">❤️ Favourite</button>
+      </div>
+    </div>
+    <div class="sp-streak-row" id="sp-streak-row"></div>
+    <div class="sp-sec">
+      <div class="sp-sec-lbl sp-sec-toggle" onclick="toggleSection(this)">
+        <span class="sp-collapse-icon">▸</span>
+        <span>Scripture Reading Plan</span>
+        <span class="sp-sec-lbl-line"></span>
+      </div>
+      <div class="sp-sec-content">
+        <div class="rp-card" id="rp-card"></div>
+      </div>
+    </div>
+    <div class="sp-sec">
+      <div class="sp-sec-lbl sp-sec-toggle" onclick="toggleSection(this)">
+        <span class="sp-collapse-icon">▸</span>
+        <span>Daily Audio Reading</span>
+        <span class="sp-sec-lbl-line"></span>
+      </div>
+      <div class="sp-sec-content">
+        <div class="sp-audio-card">
+          <div class="sp-audio-label">Sacred Audio</div>
+          <div class="sp-audio-title" id="audio-now-title">Select a track</div>
+          <div class="sp-audio-controls">
+            <button class="sp-audio-play" id="audio-play-btn" onclick="audioToggle()">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="5,3 19,12 5,21"/>
+              </svg>
+            </button>
+            <div class="sp-audio-right">
+              <input type="range" id="audio-seek" class="sp-audio-seek" min="0" max="100" value="0" oninput="audioSeek(this.value)">
+              <div class="sp-audio-time">
+                <span class="sp-audio-cur" id="audio-cur">0:00</span>
+                <span class="sp-audio-dur" id="audio-dur">--:--</span>
+              </div>
+            </div>
+          </div>
+          <div class="sp-audio-tracks" id="sp-audio-tracks"></div>
+          <button class="sp-vbtn" onclick="openAddFavVerseModal()" style="margin-top:12px;width:100%;">💎 Add to Favourites</button>
+          <audio id="sp-audio" crossorigin="anonymous"></audio>
+        </div>
+      </div>
+    </div>
+    <div class="sp-sec">
+      <div class="sp-sec-lbl sp-sec-toggle" onclick="toggleSection(this)">
+        <span class="sp-collapse-icon">▸</span>
+        <span>Daily Devotions</span>
+        <span class="sp-sec-lbl-line"></span>
+      </div>
+      <div class="sp-sec-content">
+        <div class="sp-sec" style="margin:0;">
+          <div class="sp-sec-lbl" style="margin-bottom:10px;cursor:default;">
+            <span style="flex:0;">📖 Choose Your Devotion</span>
+          </div>
+          <div class="sp-dev-row" id="sp-dev-row"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sp-sec">
+      <div class="sp-sec-lbl sp-sec-toggle" onclick="toggleSection(this)">
+        <span class="sp-collapse-icon">▸</span>
+        <span>Prayer Requests</span>
+        <span class="sp-sec-lbl-line"></span>
+      </div>
+      <div class="sp-sec-content">
+        <div class="sp-sec" style="margin:0;">
+          <div id="sp-prayer-list"></div>
+          <button class="sp-add-prayer-btn" onclick="openAddPrayerModal()">+ Add Prayer</button>
+        </div>
+      </div>
+    </div>
+    <div class="sp-sec">
+      <div class="sp-sec-lbl sp-sec-toggle" onclick="toggleSection(this)">
+        <span class="sp-collapse-icon">▸</span>
+        <span>Gratitude Journal</span>
+        <span class="sp-sec-lbl-line"></span>
+      </div>
+      <div class="sp-sec-content">
+        <div class="sp-grat-card">
+          <div class="sp-grat-hdr">Today's Reflection</div>
+          <textarea class="sp-grat-ta" id="sp-grat-ta" placeholder="What are you grateful for today?" maxlength="280"></textarea>
+          <div class="sp-grat-footer">
+            <span class="sp-grat-count"><span id="sp-grat-count">0</span>/280</span>
+            <button class="sp-grat-save" onclick="saveGratitude()">Save</button>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="sp-sec-lbl" style="margin-bottom:8px;cursor:default;">
+            <span style="flex:0;">✨ Past Reflections</span>
+          </div>
+          <div id="sp-grat-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sp-sec">
+      <div class="sp-sec-lbl sp-sec-toggle" onclick="toggleSection(this)">
+        <span class="sp-collapse-icon">▸</span>
+        <span>Favourite Verses</span>
+        <span class="sp-sec-lbl-line"></span>
+      </div>
+      <div class="sp-sec-content">
+        <div id="sp-favs-list"></div>
+      </div>
+    </div>
+    <!-- NEW AUDIO TAB -->
+    <div id="audio-tab" style="display:none;padding:20px 14px;">
+      <div style="margin-bottom:30px;">
+        <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff;margin-bottom:5px;">🎵 Sacred Audio</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);">Five devotional meditations</div>
+      </div>
+      
+      <div style="background:linear-gradient(135deg,rgba(123,79,212,0.12),rgba(167,139,250,0.06));border:2px solid rgba(123,79,212,0.2);border-radius:20px;padding:20px;margin-bottom:20px;">
+        
+        <button onclick="newLoadTrack(0)" style="width:100%;padding:12px;border:1px solid rgba(123,79,212,0.3);border-radius:12px;background:rgba(123,79,212,0.05);color:rgba(255,255,255,0.8);font-family:'DM Sans';font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;text-align:left;transition:all 0.2s;">
+          <div style="font-weight:700;">🙏 Psalm 91 Meditation</div>
+          <div style="font-size:11px;opacity:0.7;">Protection & Refuge</div>
+        </button>
+        
+        <button onclick="newLoadTrack(1)" style="width:100%;padding:12px;border:1px solid rgba(123,79,212,0.3);border-radius:12px;background:rgba(123,79,212,0.05);color:rgba(255,255,255,0.8);font-family:'DM Sans';font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;text-align:left;transition:all 0.2s;">
+          <div style="font-weight:700;">💫 Jeremiah 31:3 · Lamentations 3:22-23</div>
+          <div style="font-size:11px;opacity:0.7;">Everlasting Love</div>
+        </button>
+        
+        <button onclick="newLoadTrack(2)" style="width:100%;padding:12px;border:1px solid rgba(123,79,212,0.3);border-radius:12px;background:rgba(123,79,212,0.05);color:rgba(255,255,255,0.8);font-family:'DM Sans';font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;text-align:left;transition:all 0.2s;">
+          <div style="font-weight:700;">✨ Joshua 1:8 · 1 John 3:1 · Romans 8:1</div>
+          <div style="font-size:11px;opacity:0.7;">Strength & Identity</div>
+        </button>
+        
+        <button onclick="newLoadTrack(3)" style="width:100%;padding:12px;border:1px solid rgba(123,79,212,0.3);border-radius:12px;background:rgba(123,79,212,0.05);color:rgba(255,255,255,0.8);font-family:'DM Sans';font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;text-align:left;transition:all 0.2s;">
+          <div style="font-weight:700;">🛡️ Psalm 124</div>
+          <div style="font-size:11px;opacity:0.7;">Victory & Deliverance</div>
+        </button>
+        
+        <button onclick="newLoadTrack(4)" style="width:100%;padding:12px;border:1px solid rgba(123,79,212,0.3);border-radius:12px;background:rgba(123,79,212,0.05);color:rgba(255,255,255,0.8);font-family:'DM Sans';font-size:13px;font-weight:600;cursor:pointer;text-align:left;transition:all 0.2s;">
+          <div style="font-weight:700;">💪 Isaiah 41:10</div>
+          <div style="font-size:11px;opacity:0.7;">Fear Not, I Am With You</div>
+        </button>
+        
+        <div style="display:flex;align-items:center;gap:15px;margin-top:20px;padding:15px;background:rgba(0,0,0,0.2);border-radius:15px;">
+          <button id="new-play-btn" onclick="newAudioToggle()" style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#7B4FD4,#A78BFA);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.2s;box-shadow:0 4px 15px rgba(123,79,212,0.3);flex-shrink:0;">▶️</button>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.9);">Ready</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.6);" id="new-status">Select track to play</div>
+          </div>
+        </div>
+        
+        <input type="range" id="new-slider" min="0" max="100" value="0" oninput="newSeek(this.value)" style="width:100%;height:4px;border-radius:2px;background:rgba(255,255,255,0.1);-webkit-appearance:none;appearance:none;cursor:pointer;margin:15px 0;display:block;">
+        
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.6);font-family:'DM Mono';">
+          <span id="new-cur">0:00</span>
+          <span id="new-dur">--:--</span>
+        </div>
+      </div>
+      
+      <audio id="new-aud" crossorigin="anonymous"></audio>
+    </div>
+  <div id="candle-overlay" onclick="closeCandle(event)">
+    <div class="candle-wrap">
+      <div class="candle-flame">
+        <div class="flame-outer"></div>
+        <div class="flame-inner"></div>
+        <div class="candle-glow"></div>
+      </div>
+      <div class="candle-body"></div>
+      <div class="candle-base"></div>
+    </div>
+    <div class="candle-verse">
+      <div class="candle-verse-text" id="candle-verse-text"></div>
+      <div class="candle-verse-ref" id="candle-verse-ref"></div>
+    </div>
+    <button class="candle-close" onclick="closeCandle()">Close</button>
+  </div>
+  <div id="add-prayer-modal" onclick="closeAddPrayerModal(event)">
+    <div class="ap-sheet" onclick="event.stopPropagation()">
+      <div class="ap-title">Add a Prayer Request</div>
+      <input type="text" class="ap-inp" id="ap-inp" placeholder="What would you like to pray about?" maxlength="100">
+      <div class="ap-btns">
+        <button class="ap-cancel" onclick="closeAddPrayerModal()">Cancel</button>
+        <button class="ap-save" onclick="addPrayer()">Add</button>
+      </div>
+    </div>
+  </div>
+  <div id="add-fav-verse-modal" onclick="closeAddFavVerseModal(event)">
+    <div class="ap-sheet" onclick="event.stopPropagation()">
+      <div class="ap-title">Save as Favourite Verse</div>
+      <textarea class="ap-inp" id="afv-text" placeholder="Enter the verse text..." maxlength="500" style="height:120px;resize:none;"></textarea>
+      <input type="text" class="ap-inp" id="afv-ref" placeholder="e.g., John 3:16" maxlength="50" style="margin-top:10px;">
+      <div class="ap-btns">
+        <button class="ap-cancel" onclick="closeAddFavVerseModal()">Cancel</button>
+        <button class="ap-save" onclick="addFavVerse()">Save</button>
+      </div>
+    </div>
+  </div>
+  <div id="export-sheet" onclick="closeExportSheet(event)">
+    <div class="es-body" onclick="event.stopPropagation()">
+      <div class="es-title">Share Your Journey</div>
+      <div class="es-btn-grid">
+        <button class="es-btn" onclick="downloadJSON()">
+          <div class="es-btn-ico">📥</div>
+          <div>Download Data</div>
+        </button>
+        <button class="es-btn" onclick="printPDF()">
+          <div class="es-btn-ico">🖨️</div>
+          <div>Print PDF</div>
+        </button>
+      </div>
+      <button class="es-cancel" onclick="closeExportSheet()">Dismiss</button>
+    </div>
+  </div>
+  <div id="toast"></div>
+</div>
+
+<script>
+/* ═══ INITIALIZE SERVICE WORKER FOR OFFLINE ═══ */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('data:application/javascript,'+encodeURIComponent(`
+    const CACHE='spirit-centre-v1';
+    const urlsToCache=['/'];
+    self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(urlsToCache)).then(()=>self.skipWaiting())));
+    self.addEventListener('activate',e=>e.waitUntil(clients.claim()));
+    self.addEventListener('fetch',e=>{
+      if(e.request.method!=='GET')return;
+      e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(r=>{
+        if(!r||r.status!==200)return r;
+        const rc=r.clone();
+        caches.open(CACHE).then(c=>c.put(e.request,rc));
+        return r;
+      }).catch(()=>new Response('Offline',{status:503})))
+      );
+    });
+  `)).catch(()=>{});
+  window.addEventListener('online',()=>document.getElementById('offline-indicator').classList.remove('show'));
+  window.addEventListener('offline',()=>document.getElementById('offline-indicator').classList.add('show'));
+  if(!navigator.onLine)document.getElementById('offline-indicator').classList.add('show');
+}
+
+/* ═══ DATA & VERSES ═══ */
+var VERSES=[
+  {t:'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',r:'John 3:16'},
+  {t:'I can do all things through Christ which strengtheneth me.',r:'Philippians 4:13'},
+  {t:'Trust in the Lord with all thine heart; and lean not unto thine own understanding.',r:'Proverbs 3:5'},
+  {t:'For I know the thoughts that I think toward you, saith the Lord, thoughts of peace, and not of evil, to give you an expected end.',r:'Jeremiah 29:11'},
+  {t:'The Lord is my light and my salvation; whom shall I fear?',r:'Psalm 27:1'},
+  {t:'But they that wait upon the Lord shall renew their strength; they shall mount up with wings as eagles.',r:'Isaiah 40:31'},
+  {t:'I have said these things to you, that in me you may have peace. In the world you will have tribulation. But take heart; I have overcome the world.',r:'John 16:33'},
+];
+var READING_PLAN=['Genesis 1-3','Genesis 4-7','Genesis 8-11','Genesis 12-15','Genesis 16-19','Genesis 20-23','Genesis 24-27','Genesis 28-31','Genesis 32-35','Genesis 36-39','Genesis 40-43','Genesis 44-47','Genesis 48-50','Exodus 1-3','Exodus 4-7','Exodus 8-11','Exodus 12-14','Exodus 15-18','Exodus 19-21','Exodus 22-24','Exodus 25-27','Exodus 28-30','Exodus 31-34','Exodus 35-37','Exodus 38-40','Leviticus 1-4','Leviticus 5-7','Leviticus 8-10','Leviticus 11-13','Leviticus 14-16'];
+var DEVOS=['🙏 Morning Prayer','📖 Scripture Reflection','🎵 Worship Song','💭 Meditation','📝 Study Notes'];
+
+/* ═══ STATE & STORAGE ═══ */
+var _vi=0,_rp={day:1,completed:[]},_devs=[],_prayers=[],_grat=[],_favs=[],_curAudio=0;
+function save(){localStorage.setItem('sc',JSON.stringify({vi:_vi,rp:_rp,devs:_devs,prayers:_prayers,grat:_grat,favs:_favs}));}
+function load(){var d=JSON.parse(localStorage.getItem('sc')||'{}');_vi=d.vi||0;_rp=d.rp||{day:1,completed:[]};_devs=d.devs||[];_prayers=d.prayers||[];_grat=d.grat||[];_favs=d.favs||[];}
+
+/* ═══ RENDERING ═══ */
+function render(){
+  document.getElementById('sp-verse-text').textContent=VERSES[_vi].t;
+  document.getElementById('sp-verse-ref').textContent=VERSES[_vi].r;
+  document.getElementById('candle-verse-text').textContent=VERSES[_vi].t;
+  document.getElementById('candle-verse-ref').textContent=VERSES[_vi].r;
+  updateStreak();updateReadingPlan();updateDevos();updatePrayers();updateGratitude();updateFavs();save();
+}
+function updateStreak(){
+  var h='';for(var i=0;i<7;i++){var lit=Math.random()<0.6;h+='<div class="sp-streak-day"><div class="sp-sd-circle '+(lit?'lit':'')+'">'+(i+1)+'</div><div class="sp-sd-lbl">Day</div></div>';}
+  document.getElementById('sp-streak-row').innerHTML=h;
+}
+function updateReadingPlan(){
+  var day=_rp.day||1,pct=Math.round(_rp.completed.length/30*100);
+  var dots='';for(var i=1;i<=30;i++){var done=_rp.completed.indexOf(i)>=0;dots+='<div class="rp-dot '+(done?'done':'')+(i===day?' today':'')+'">'+i+'</div>';}
+  var card='<div class="rp-top"><div class="rp-today">Day '+day+' · '+(READING_PLAN[day-1]||'Complete!')+'</div><div class="rp-pct">'+pct+'%</div></div>'
+    +'<div class="rp-bar-track"><div class="rp-bar-fill" style="width:'+pct+'%"></div></div>'
+    +'<div class="rp-dots">'+dots+'</div>'
+    +'<button class="rp-mark-btn" onclick="markDayDone()">✓ Mark Day Done</button>';
+  document.getElementById('rp-card').innerHTML=card;
+}
+function updateDevos(){
+  var h='';for(var i=0;i<DEVOS.length;i++){var done=_devs.indexOf(i)>=0;h+='<button class="sp-dev-chip '+(done?'done':'')+'">'+DEVOS[i]+'</button>';}
+  document.getElementById('sp-dev-row').innerHTML=h;
+  document.querySelectorAll('.sp-dev-chip').forEach(function(btn,i){btn.onclick=function(){_devs.indexOf(i)<0?_devs.push(i):_devs.splice(_devs.indexOf(i),1);updateDevos();save();};});
+}
+function updatePrayers(){
+  var h='';for(var i=0;i<_prayers.length;i++){var p=_prayers[i];h+='<div class="sp-prayer-item '+(p.prayed?'prayed':'')+'"><div class="sp-p-chk"></div><div class="sp-p-text">'+p.text+'</div><span class="sp-prayer-count">'+(_prayers.filter(function(x){return x.text===p.text&&x.prayed;}).length)+' prayers</span></div>';}
+  document.getElementById('sp-prayer-list').innerHTML=h;
+  document.querySelectorAll('.sp-prayer-item').forEach(function(el,i){el.onclick=function(){_prayers[i].prayed=!_prayers[i].prayed;updatePrayers();save();};});
+}
+function updateGratitude(){
+  document.getElementById('sp-grat-count').textContent=document.getElementById('sp-grat-ta').value.length;
+  var h='';for(var i=_grat.length-1;i>=0;i--){var g=_grat[i];h+='<div class="sp-grat-entry"><div class="sp-grat-entry-hdr"><span class="sp-grat-entry-date">'+g.d+'</span><button class="sp-grat-entry-del" onclick="delGrat('+i+')">✕</button></div><div class="sp-grat-entry-text">'+g.t+'</div></div>';}
+  document.getElementById('sp-grat-list').innerHTML=h;
+}
+function updateFavs(){
+  var h='';for(var i=0;i<_favs.length;i++){var v=_favs[i];h+='<div class="sp-verse-card"><div class="sp-verse-ico">⭐</div><div class="sp-verse-label">Favourite Verse</div><div class="sp-verse-text">'+v.t+'</div><div class="sp-verse-ref">'+v.r+'</div></div>';}
+  var addBtn='<button class="sp-add-prayer-btn" onclick="openAddFavVerseModal()" style="margin:0 14px 10px;">+ Add Verse</button>';
+  document.getElementById('sp-favs-list').innerHTML=addBtn+(h||'<div style="padding:20px;text-align:center;color:rgba(200,190,255,0.32);font-size:13px;">No favourite verses yet</div>');
+}
+
+/* ═══ INTERACTIONS ═══ */
+function nextVerse(){_vi=(_vi+1)%VERSES.length;render();}
+function toggleFavourite(){var v=VERSES[_vi];var idx=_favs.findIndex(function(f){return f.t===v.t;});if(idx<0){_favs.push(v);document.getElementById('sp-vbtn-fav').classList.add('active');}else{_favs.splice(idx,1);document.getElementById('sp-vbtn-fav').classList.remove('active');}updateFavs();save();}
+function markDayDone(){var d=_rp.day||1;if(_rp.completed.indexOf(d)<0){_rp.completed.push(d);if(d<30)_rp.day=d+1;}updateReadingPlan();save();}
+function saveGratitude(){var t=document.getElementById('sp-grat-ta').value;if(t){_grat.push({d:fmtDate(new Date()),t:t});document.getElementById('sp-grat-ta').value='';updateGratitude();save();showToast('Gratitude saved! 🙏');}}
+function delGrat(i){_grat.splice(i,1);updateGratitude();save();}
+function openAddPrayerModal(){document.getElementById('add-prayer-modal').classList.add('open');}
+function closeAddPrayerModal(e){if(!e||e.target===document.getElementById('add-prayer-modal'))document.getElementById('add-prayer-modal').classList.remove('open');}
+function addPrayer(){var inp=document.getElementById('ap-inp');var txt=inp.value;if(txt){_prayers.push({text:txt,prayed:false});inp.value='';closeAddPrayerModal();updatePrayers();save();showToast('Prayer added 🙏');}}
+function openAddFavVerseModal(){document.getElementById('add-fav-verse-modal').classList.add('open');}
+function closeAddFavVerseModal(e){if(!e||e.target===document.getElementById('add-fav-verse-modal'))document.getElementById('add-fav-verse-modal').classList.remove('open');}
+function addFavVerse(){var txt=document.getElementById('afv-text').value;var ref=document.getElementById('afv-ref').value;if(txt&&ref){_favs.push({t:txt,r:ref});document.getElementById('afv-text').value='';document.getElementById('afv-ref').value='';closeAddFavVerseModal();updateFavs();save();showToast('Verse added to favourites! 💎');}else{showToast('Please fill all fields');}}
+
+function openCandle(){document.getElementById('candle-overlay').classList.add('open');document.getElementById('candle-btn').classList.add('lit');}
+function closeCandle(e){if(!e||e.target===document.getElementById('candle-overlay')){document.getElementById('candle-overlay').classList.remove('open');document.getElementById('candle-btn').classList.remove('lit');}}
+function toggleSection(el){el.classList.toggle('collapsed');el.nextElementSibling.classList.toggle('collapsed');}
+function takeScreenshot(){
+  if(typeof html2canvas!=='undefined'){
+    html2canvas(document.getElementById('app'),{backgroundColor:'#07091A'}).then(function(canvas){
+      var link=document.createElement('a');link.href=canvas.toDataURL();link.download='spirit-centre-'+new Date().toISOString().split('T')[0]+'.png';link.click();showToast('Screenshot saved! 📸');
+    });
+  }else{
+    showToast('Taking screenshot... 📸');setTimeout(function(){
+      alert('Full page screenshot: Press Ctrl+Shift+S (Windows) or Cmd+Shift+4 (Mac) to capture');
+    },200);
+  }
+}
+
+/* ═══ TIME & DATE ═══ */
+function fmtDate(d){var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();}
+setInterval(function(){var d=new Date();var h=d.getHours().toString().padStart(2,'0');var m=d.getMinutes().toString().padStart(2,'0');document.getElementById('sbar-time').textContent=h+':'+m;},1000);
+
+/* ═══ EXPORT & PRINT ═══ */
+function downloadJSON(){
+  var data={verses:_favs,prayers:_prayers,gratitude:_grat,readingPlan:_rp};
+  var json=JSON.stringify(data,null,2);
+  var blob=new Blob([json],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var link=document.createElement('a');
+  link.href=url;link.download='spirit-centre-'+fmtDate(new Date())+'.json';
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast('Data downloaded! 📥');
+}
+function printPDF(){
+  var w=window.open('','','width=800,height=600');
+  var prayers=_prayers.map(function(p){return '<li><strong>'+p.text+'</strong> '+(p.prayed?'<span style="color:#15A854;">[Prayed]</span>':'')+'</li>';}).join('');
+  var devs=_devs.map(function(i){return'<li>'+DEVOS[i]+'</li>';}).join('');
+  var entries=_grat.map(function(g){return'<div style="margin-bottom:12px;"><strong style="color:#7B4FD4;">'+g.d+':</strong> <span style="color:#D8D0FF;">'+g.t+'</span></div>';}).join('');
+  var favs=_favs.map(function(f){return '<blockquote style="border-left:3px solid #A78BFA;margin:8px 0;padding:8px 14px;font-style:italic;color:#2D2050">'+f.t+'<footer style="font-size:10px;color:#9D7EC8;margin-top:4px">'+f.r+'</footer></blockquote>';}).join('');
+  w.document.write(`<!DOCTYPE html><html><head><title>Spirit Centre Export</title>
+<style>
+  body{font-family:Georgia,serif;margin:0;padding:30px;background:#0F0A2A;color:#E8E4FF;}
+  .page{max-width:640px;margin:0 auto;}
+  .frame{border:2px solid rgba(123,79,212,0.40);border-radius:22px;padding:26px;
+    background:linear-gradient(145deg,#1A1040,#120D30);position:relative;margin-bottom:22px;}
+  .fc{position:absolute;font-size:24px;}
+  .fc-tl{top:10px;left:12px;} .fc-tr{top:10px;right:12px;}
+  .fc-bl{bottom:10px;left:12px;} .fc-br{bottom:10px;right:12px;}
+  h1{font-family:'Palatino Linotype',serif;font-size:30px;text-align:center;
+    color:#A78BFA;margin-bottom:4px;}
+  .petal{text-align:center;font-size:16px;letter-spacing:5px;margin:10px 0;color:#7B4FD4;}
+  .date-line{text-align:center;font-size:12px;color:rgba(200,190,255,0.45);margin-bottom:18px;
+    font-family:'Courier New',monospace;}
+  h2{font-size:14px;text-transform:uppercase;letter-spacing:2px;color:#A78BFA;
+    border-bottom:1px solid rgba(123,79,212,0.25);padding-bottom:6px;margin:20px 0 12px;}
+  .verse-box{background:rgba(123,79,212,0.12);border-radius:14px;padding:16px 18px;
+    border:1px solid rgba(123,79,212,0.28);}
+  .verse-text{font-size:16px;font-style:italic;line-height:1.85;color:#E8E4FF;}
+  .verse-ref{font-family:'Courier New',monospace;font-size:11px;color:#A78BFA;margin-top:10px;}
+  ul{list-style:none;padding:0;}ul li::before{content:'✦ ';color:#A78BFA;}
+  ul li{margin-bottom:5px;font-size:13px;line-height:1.6;color:#D8D0FF;}
+  .rp-box{padding:12px 16px;background:rgba(123,79,212,0.09);border-radius:12px;
+    border:1px solid rgba(123,79,212,0.22);}
+  .footer{text-align:center;font-size:10px;color:rgba(200,190,255,0.28);margin-top:24px;
+    font-family:'Courier New',monospace;}
+  @media print{body{background:#fff;color:#1A0A40;}
+    .frame{background:#fff;border-color:rgba(123,79,212,0.25);}
+    h1,h2,.verse-ref,.petal{color:#7B4FD4;} .verse-text,.verse-box,.rp-box ul li{color:#1A0A40;}
+    .verse-box,.rp-box{background:#F8F4FF;} .frame{border:1.5px solid rgba(123,79,212,0.28);}}
+</style></head><body>
+<div class="page">
+<div class="frame">
+  <span class="fc fc-tl">✝️</span><span class="fc fc-tr">🙏</span>
+  <span class="fc fc-bl">🕊️</span><span class="fc fc-br">⭐</span>
+  <h1>Spirit Centre</h1>
+  <div class="petal">✦ ✝ ✦ 🙏 ✦ ✝ ✦ 🙏 ✦</div>
+  <div class="date-line">` + fmtDate(new Date()) + ` · Daily Report</div>
+  <h2>Verse of the Day</h2>
+  <div class="verse-box">
+    <div class="verse-text">` + VERSES[_vi].t + `</div>
+    <div class="verse-ref">` + VERSES[_vi].r + `</div>
+  </div>
+  <h2>Scripture Reading Plan</h2>
+  <div class="rp-box">
+    <p style="margin:0 0 6px;font-size:13px;color:#D8D0FF">Day ` + (_rp.day||1) + ` · ` + (READING_PLAN[(_rp.day||1)-1]||'Complete!') + `</p>
+    <p style="margin:0;font-size:11px;color:#A78BFA;font-family:'Courier New',monospace">` + _rp.completed.length + ` / 30 days complete (` + Math.round(_rp.completed.length/30*100) + `%)</p>
+  </div>
+  ` + (prayers?'<h2>Prayers Offered</h2><ul>'+prayers+'</ul>':'') + `
+  ` + (devs?'<h2>Devotions Done</h2><ul>'+devs+'</ul>':'') + `
+  ` + (entries?'<h2>Gratitude Reflections</h2>'+entries:'') + `
+  ` + (favs?'<h2>Favourite Verses</h2>'+favs:'') + `
+  <div class="petal">🙏 ✦ ✝ ✦ 🙏 ✦ ✝ ✦ 🙏</div>
+</div>
+<div class="footer">Spirit Centre · Generated ` + new Date().toDateString() + ` · Keep the faith</div>
+</div></body></html>`);
+  w.document.close();
+  setTimeout(function(){w.print();},400);
+  showToast('PDF opening… 📄');
+}
+function openExportSheet(){document.getElementById('export-sheet').classList.add('open');}
+function closeExportSheet(e){if(!e||e.target===document.getElementById('export-sheet'))document.getElementById('export-sheet').classList.remove('open');}
+
+/* ═══ AUDIO PLAYER ═══ */
+(function(){
+  var TRACKS=[
+    {src:'Psalm_91.mp3', title:'Sacred Audio — <span>Psalm 91 Meditation</span>'},
+    {src:'Jeremiah_31_3_Lamentations_3_22_-_23.mp3', title:'Sacred Audio — <span>Jeremiah 31:3 · Lamentations 3:22-23</span>'},
+    {src:'Josh_1_8_1John_3_1_Rom8_1.mp3', title:'Sacred Audio — <span>Joshua 1:8 · 1 John 3:1 · Romans 8:1</span>'},
+    {src:'Psalm_124.mp3', title:'Sacred Audio — <span>Psalm 124</span>'},
+    {src:'Isaiah_41_10.mp3', title:'Sacred Audio — <span>Isaiah 41:10</span>'}
+  ];
+  var _cur=0;
+  var aud=document.getElementById('sp-audio');
+  var btn=document.getElementById('audio-play-btn');
+  var icon=btn.querySelector('svg');
+  var seek=document.getElementById('audio-seek');
+  var curEl=document.getElementById('audio-cur');
+  var durEl=document.getElementById('audio-dur');
+  var titleEl=document.getElementById('audio-now-title');
+  var isPlaying=false;
+  var isIOS=navigator.userAgent.toLowerCase().indexOf('iphone')>-1||navigator.userAgent.toLowerCase().indexOf('ipad')>-1;
+  
+  function fmt(s){
+    if(!s||isNaN(s))return'0:00';
+    var m=Math.floor(s/60);
+    var ss=Math.floor(s%60);
+    return m+':'+(ss<10?'0':'')+ss;
+  }
+  
+  function setPlaying(p){
+    isPlaying=p;
+    if(p){
+      icon.innerHTML='<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+      btn.classList.add('playing');
+    }else{
+      icon.innerHTML='<polygon points="5,3 19,12 5,21"/>';
+      btn.classList.remove('playing');
+    }
+  }
+  
+  function setActiveTrack(i){
+    document.querySelectorAll('.sp-audio-track').forEach(function(el,idx){
+      el.classList.toggle('active',idx===i);
+    });
+    titleEl.innerHTML=TRACKS[i].title;
+    seek.value=0;
+    curEl.textContent='0:00';
+    durEl.textContent='--:--';
+  }
+  
+  // iOS-optimized audio loading with cache busting
+  window.audioLoad=function(i){
+    try{
+      _cur=i;
+      setActiveTrack(i);
+      setPlaying(false);
+      
+      var trackName=TRACKS[i].title.split('—')[1].trim().replace(/<[^>]*>/g,'');
+      
+      // Force fresh load on iOS
+      if(isIOS){
+        aud.pause();
+        aud.currentTime=0;
+      }
+      
+      // Add timestamp to bypass cache on iOS
+      var trackSrc=TRACKS[i].src+'?v='+Date.now();
+      aud.src=trackSrc;
+      
+      // Force load
+      if(typeof aud.load==='function'){
+        aud.load();
+      }
+      
+      showToast('📁 Loading: '+trackName);
+      console.log('Load (iOS:'+isIOS+'): '+trackSrc);
+    }catch(e){
+      console.error('Load error:',e);
+      showToast('Error: '+e.message);
+    }
+  };
+  
+  // Simple play with iOS workaround
+  window.audioToggle=function(){
+    try{
+      if(aud.paused||aud.ended){
+        var playPromise=aud.play();
+        if(playPromise&&typeof playPromise.then==='function'){
+          playPromise.then(function(){
+            console.log('▶️ Playing');
+            setPlaying(true);
+          }).catch(function(e){
+            console.error('Play blocked:',e.message);
+            if(isIOS){
+              showToast('⚠️ Tap to enable sound (iOS)');
+            }else{
+              showToast('Cannot play: '+e.message);
+            }
+            setPlaying(false);
+          });
+        }
+      }else{
+        aud.pause();
+        setPlaying(false);
+      }
+    }catch(e){
+      console.error('Toggle error:',e);
+      showToast('Play error');
+    }
+  };
+  
+  // Seek
+  window.audioSeek=function(v){
+    try{
+      if(aud.duration&&!isNaN(aud.duration)){
+        aud.currentTime=(v/100)*aud.duration;
+      }
+    }catch(e){
+      console.error('Seek error:',e);
+    }
+  };
+  
+  // Debug info
+  window.debugAudio=function(){
+    console.log('=== AUDIO ===');
+    console.log('iOS:',isIOS);
+    console.log('src:',aud.src);
+    console.log('duration:',aud.duration);
+    console.log('currentTime:',aud.currentTime);
+    console.log('paused:',aud.paused);
+    console.log('error:',aud.error?.code);
+    console.log('readyState:',aud.readyState,'(0=HAVEN\'T STARTED,1=METADATA,2=CURRENT_DATA,3=FUTURE_DATA,4=ENOUGH_DATA)');
+    console.log('networkState:',aud.networkState,'(0=EMPTY,1=IDLE,2=LOADING,3=NO_SOURCE)');
+  };
+  
+  // Event handlers
+  aud.addEventListener('loadedmetadata',function(){
+    console.log('✓ Loaded: '+fmt(aud.duration));
+    durEl.textContent=fmt(aud.duration);
+  },false);
+  
+  aud.addEventListener('timeupdate',function(){
+    if(!aud.duration||isNaN(aud.duration))return;
+    seek.value=(aud.currentTime/aud.duration)*100;
+    curEl.textContent=fmt(aud.currentTime);
+  },false);
+  
+  aud.addEventListener('play',function(){
+    console.log('Event: play');
+    setPlaying(true);
+  },false);
+  
+  aud.addEventListener('pause',function(){
+    console.log('Event: pause');
+    setPlaying(false);
+  },false);
+  
+  aud.addEventListener('ended',function(){
+    console.log('Event: ended');
+    setPlaying(false);
+  },false);
+  
+  aud.addEventListener('error',function(){
+    var code=aud.error?.code;
+    var msg='Error '+code;
+    if(code===1)msg='ABORTED';
+    if(code===2)msg='NETWORK_ERROR';
+    if(code===3)msg='DECODE_ERROR';
+    if(code===4)msg='SRC_NOT_SUPPORTED';
+    console.error('❌ '+msg);
+    durEl.textContent='ERROR';
+    setPlaying(false);
+    showToast('⚠️ '+msg);
+  },false);
+  
+  aud.addEventListener('stalled',function(){
+    console.warn('⏳ Audio stalled - loading...');
+  },false);
+  
+  // Render track buttons
+  var trackHtml='';
+  for(var i=0;i<TRACKS.length;i++){
+    var displayTitle=TRACKS[i].title.indexOf('—')>-1?TRACKS[i].title.split('—')[1].replace(/<[^>]*>/g,'').trim():TRACKS[i].title;
+    trackHtml+='<button class="sp-audio-track '+(i===_cur?'active':'')+'" onclick="window.audioLoad('+i+')">'+displayTitle+'</button>';
+  }
+  
+  var tracksEl=document.getElementById('sp-audio-tracks');
+  if(tracksEl){tracksEl.innerHTML=trackHtml;}
+  
+  setActiveTrack(0);
+  
+  // For debugging
+  console.log('🎵 Spirit Centre Audio Player ready (iOS:'+isIOS+')');
+  console.log('Tip: Type debugAudio() in console to check status');
+})();
+
+/* ═══ TOAST ═══ */
+var _tt=null;
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.remove('show');
+  void t.offsetWidth;
+  t.classList.add('show');
+  clearTimeout(_tt);
+  _tt=setTimeout(function(){t.classList.remove('show');},2800);
+}
+function dismissToast(){document.getElementById('toast').classList.remove('show');clearTimeout(_tt);}
+
+/* ══════════════════════════════════════════════════════════
+   OFFLINE MODE & STORAGE
+   ══════════════════════════════════════════════════════════ */
+const STORAGE_KEY='spirit_centre_data';
+
+function saveAppState(){
+  const state={
+    timestamp:new Date().toISOString(),
+    currentVerse:VERSE_IDX,
+    streakDays:STREAK.map(x=>x),
+  };
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  showToast('✓ Session saved offline');
+}
+
+function loadAppState(){
+  const saved=localStorage.getItem(STORAGE_KEY);
+  if(saved){
+    try{
+      const state=JSON.parse(saved);
+      if(state.currentVerse>=0)VERSE_IDX=state.currentVerse;
+      if(state.streakDays)STREAK=state.streakDays;
+      render();
+    }catch(e){console.log('Load state failed',e);}
+  }
+}
+
+function saveToLocal(){
+  saveAppState();
+}
+
+window.addEventListener('beforeunload',saveAppState);
+window.addEventListener('load',loadAppState);
+
+/* ══════════════════════════════════════════════════════════
+   SCREENSHOT FUNCTIONALITY
+   ══════════════════════════════════════════════════════════ */
+async function captureScreenshot(){
+  try{
+    showToast('📸 Capturing screenshot...');
+    const element=document.getElementById('app');
+    const canvas=await html2canvas(element,{
+      backgroundColor:'#07091A',
+      scale:2,
+      logging:false,
+      useCORS:true,
+      allowTaint:true,
+    });
+    
+    const link=document.createElement('a');
+    link.href=canvas.toDataURL('image/png');
+    link.download=`spirit-centre-${new Date().getTime()}.png`;
+    link.click();
+    showToast('✓ Screenshot saved');
+  }catch(e){
+    console.error('Screenshot failed',e);
+    showToast('❌ Screenshot failed');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   PDF EXPORT FUNCTIONALITY
+   ══════════════════════════════════════════════════════════ */
+async function exportPDF(){
+  try{
+    showToast('📄 Generating PDF...');
+    const{jsPDF}=window.jspdf;
+    const element=document.getElementById('app');
+    
+    const canvas=await html2canvas(element,{
+      backgroundColor:'#07091A',
+      scale:2,
+      logging:false,
+      useCORS:true,
+    });
+    
+    const imgData=canvas.toDataURL('image/png');
+    const pdf=new jsPDF({
+      orientation:'portrait',
+      unit:'mm',
+      format:'a4',
+    });
+    
+    const imgWidth=210;
+    const imgHeight=(canvas.height*imgWidth)/canvas.width;
+    
+    pdf.addImage(imgData,'PNG',0,0,imgWidth,imgHeight);
+    pdf.save(`spirit-centre-${new Date().getTime()}.pdf`);
+    showToast('✓ PDF exported');
+  }catch(e){
+    console.error('PDF export failed',e);
+    showToast('❌ PDF export failed');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SHARE FUNCTIONALITY
+   ══════════════════════════════════════════════════════════ */
+async function shareApp(){
+  try{
+    const shareData={
+      title:'Spirit Centre',
+      text:'Join me on my spiritual journey with Spirit Centre - daily devotions, Scripture, and prayer.',
+      url:window.location.href,
+    };
+    
+    if(navigator.share){
+      await navigator.share(shareData);
+      showToast('✓ Shared');
+    }else{
+      await navigator.clipboard.writeText(window.location.href);
+      showToast('✓ Link copied to clipboard');
+    }
+  }catch(e){
+    if(e.name!=='AbortError'){
+      console.error('Share failed',e);
+      showToast('❌ Share failed');
+    }
+  }
+}
+
+
+if(window.location.protocol==='file:'){
+  setTimeout(function(){
+    showToast('⚠️ Audio requires HTTP server - see README');
+    console.warn('⚠️ AUDIO ISSUE: Opened as file://, not HTTP server.');
+    console.warn('Audio files cannot load. Use start-server.py instead.');
+  },800);
+}
+
+/* Toggle between Main and Audio Tab */
+function toggleAudioTab(){
+  var main=document.getElementById('main');
+  var audioTab=document.getElementById('audio-tab');
+  var isMainVisible=main.style.display!=='none';
+  
+  main.style.display=isMainVisible?'none':'block';
+  audioTab.style.display=isMainVisible?'block':'none';
+  
+  var hdr=document.querySelector('.sp-hdr');
+  if(hdr){
+    hdr.style.display=isMainVisible?'none':'block';
+  }
+}
+
+/* ═══ NEW AUDIO TAB ═══ */
+var newAudioTracks=[
+  {src:'Psalm_91.mp3', name:'Psalm 91 Meditation'},
+  {src:'Jeremiah_31_3_Lamentations_3_22_-_23.mp3', name:'Jeremiah 31:3 · Lamentations 3:22-23'},
+  {src:'Josh_1_8_1John_3_1_Rom8_1.mp3', name:'Joshua 1:8 · 1 John 3:1 · Romans 8:1'},
+  {src:'Psalm_124.mp3', name:'Psalm 124'},
+  {src:'Isaiah_41_10.mp3', name:'Isaiah 41:10'}
+];
+var newAudIdx=-1;
+
+function newFmt(s){
+  if(!s||isNaN(s))return'0:00';
+  var m=Math.floor(s/60);
+  var ss=Math.floor(s%60);
+  return m+':'+(ss<10?'0':'')+ss;
+}
+
+window.newLoadTrack=function(idx){
+  try{
+    newAudIdx=idx;
+    var el=document.getElementById('new-aud');
+    el.src=newAudioTracks[idx].src+'?v='+Date.now();
+    el.load();
+    document.getElementById('new-status').textContent=newAudioTracks[idx].name+' - Ready';
+    document.getElementById('new-play-btn').textContent='▶️';
+    showToast('Loading: '+newAudioTracks[idx].name);
+    console.log('Track: '+newAudioTracks[idx].src);
+  }catch(e){
+    console.error(e);
+    showToast('Error loading');
+  }
+};
+
+window.newAudioToggle=function(){
+  try{
+    var el=document.getElementById('new-aud');
+    if(!el.src){
+      showToast('Select track first');
+      return;
+    }
+    if(el.paused){
+      el.play().then(function(){
+        document.getElementById('new-play-btn').textContent='⏸️';
+      }).catch(function(e){
+        console.error('Play:',e);
+        showToast('Cannot play');
+      });
+    }else{
+      el.pause();
+      document.getElementById('new-play-btn').textContent='▶️';
+    }
+  }catch(e){
+    console.error(e);
+  }
+};
+
+window.newSeek=function(v){
+  try{
+    var el=document.getElementById('new-aud');
+    if(el.duration){
+      el.currentTime=(v/100)*el.duration;
+    }
+  }catch(e){}
+};
+
+var newAudEl=document.getElementById('new-aud');
+if(newAudEl){
+  newAudEl.addEventListener('loadedmetadata',function(){
+    document.getElementById('new-dur').textContent=newFmt(newAudEl.duration);
+  });
+  newAudEl.addEventListener('timeupdate',function(){
+    if(!newAudEl.duration)return;
+    document.getElementById('new-slider').value=(newAudEl.currentTime/newAudEl.duration)*100;
+    document.getElementById('new-cur').textContent=newFmt(newAudEl.currentTime);
+  });
+  newAudEl.addEventListener('play',function(){
+    document.getElementById('new-play-btn').textContent='⏸️';
+  });
+  newAudEl.addEventListener('pause',function(){
+    document.getElementById('new-play-btn').textContent='▶️';
+  });
+  newAudEl.addEventListener('error',function(){
+    console.error('Error:',newAudEl.error?.code);
+    showToast('Error loading');
+  });
+}
+
+console.log('🎵 Audio Tab ready');
+
+load();render();
+</script>
+</body>
+</html>
