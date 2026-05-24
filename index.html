@@ -435,7 +435,6 @@ html,body{height:100%;overflow:hidden;background:#07091A;}
             </div>
           </div>
           <div class="sp-audio-tracks" id="sp-audio-tracks"></div>
-          <button class="sp-vbtn" onclick="openAddFavVerseModal()" style="margin-top:12px;width:100%;">💎 Add to Favourites</button>
           <audio id="sp-audio" crossorigin="anonymous"></audio>
         </div>
       </div>
@@ -502,7 +501,7 @@ html,body{height:100%;overflow:hidden;background:#07091A;}
       </div>
     </div>
     <!-- NEW AUDIO TAB -->
-    <div id="audio-tab" style="display:none;padding:20px 14px;">
+    <div id="audio-tab" style="display:none;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:20px 14px;position:relative;z-index:1;">
       <div style="margin-bottom:30px;">
         <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff;margin-bottom:5px;">🎵 Sacred Audio</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);">Five devotional meditations</div>
@@ -551,7 +550,7 @@ html,body{height:100%;overflow:hidden;background:#07091A;}
         </div>
       </div>
       
-      <audio id="new-aud" crossorigin="anonymous"></audio>
+      <audio id="new-aud" preload="none" crossorigin="anonymous" style="width:100%;"></audio>
     </div>
   </div>
   <div id="candle-overlay" onclick="closeCandle(event)">
@@ -1177,18 +1176,43 @@ function newFmt(s){
 }
 
 window.newLoadTrack=function(idx){
+  console.log('newLoadTrack called with idx:', idx);
   try{
     newAudIdx=idx;
     var el=document.getElementById('new-aud');
-    el.src=newAudioTracks[idx].src+'?v='+Date.now();
-    el.load();
-    document.getElementById('new-status').textContent=newAudioTracks[idx].name+' - Ready';
+    if(!el){
+      console.error('Audio element not found!');
+      showToast('❌ Audio element missing');
+      return;
+    }
+    
+    var trackName=newAudioTracks[idx].name;
+    var trackSrc=newAudioTracks[idx].src;
+    
+    console.log('Loading:', trackSrc);
+    
+    // Stop and reset current playback
+    el.pause();
+    el.currentTime=0;
+    
+    // Update UI immediately
+    document.getElementById('new-slider').value=0;
+    document.getElementById('new-cur').textContent='0:00';
+    document.getElementById('new-dur').textContent='--:--';
     document.getElementById('new-play-btn').textContent='▶️';
-    showToast('Loading: '+newAudioTracks[idx].name);
-    console.log('Track: '+newAudioTracks[idx].src);
+    document.getElementById('new-status').textContent=trackName+' - Loading...';
+    
+    // Set new source with cache busting
+    el.src=trackSrc+'?t='+Date.now();
+    
+    // Explicitly load
+    el.load();
+    
+    console.log('✓ Load initiated for:', trackName);
+    showToast('📁 Loading: '+trackName);
   }catch(e){
-    console.error(e);
-    showToast('Error loading');
+    console.error('newLoadTrack error:', e);
+    showToast('❌ Load error: '+e.message);
   }
 };
 
@@ -1196,57 +1220,127 @@ window.newAudioToggle=function(){
   try{
     var el=document.getElementById('new-aud');
     if(!el.src){
-      showToast('Select track first');
+      showToast('⚠️ Select a track first');
       return;
     }
-    if(el.paused){
-      el.play().then(function(){
-        document.getElementById('new-play-btn').textContent='⏸️';
-      }).catch(function(e){
-        console.error('Play:',e);
-        showToast('Cannot play');
-      });
+    
+    if(el.paused || el.ended){
+      var playPromise=el.play();
+      if(playPromise && typeof playPromise.then==='function'){
+        playPromise.then(function(){
+          console.log('▶️ Playing');
+          document.getElementById('new-play-btn').textContent='⏸️';
+        }).catch(function(e){
+          console.error('Play failed:',e);
+          showToast('⚠️ Cannot play: '+e.message);
+        });
+      }
     }else{
       el.pause();
       document.getElementById('new-play-btn').textContent='▶️';
     }
   }catch(e){
-    console.error(e);
+    console.error('Toggle error:',e);
+    showToast('⚠️ Playback error');
   }
 };
 
 window.newSeek=function(v){
   try{
     var el=document.getElementById('new-aud');
-    if(el.duration){
+    if(el && el.duration && !isNaN(el.duration)){
       el.currentTime=(v/100)*el.duration;
     }
-  }catch(e){}
+  }catch(e){
+    console.error('Seek error:',e);
+  }
 };
 
 var newAudEl=document.getElementById('new-aud');
+console.log('Setting up audio element:', newAudEl);
+
 if(newAudEl){
-  newAudEl.addEventListener('loadedmetadata',function(){
-    document.getElementById('new-dur').textContent=newFmt(newAudEl.duration);
-  });
-  newAudEl.addEventListener('timeupdate',function(){
-    if(!newAudEl.duration)return;
-    document.getElementById('new-slider').value=(newAudEl.currentTime/newAudEl.duration)*100;
-    document.getElementById('new-cur').textContent=newFmt(newAudEl.currentTime);
-  });
-  newAudEl.addEventListener('play',function(){
+  
+  // Remove any existing listeners (in case of multiple initializations)
+  newAudEl.onloadstart=null;
+  newAudEl.onloadedmetadata=null;
+  newAudEl.ontimeupdate=null;
+  newAudEl.onplay=null;
+  newAudEl.onpause=null;
+  newAudEl.onended=null;
+  newAudEl.onerror=null;
+  
+  newAudEl.onloadstart=function(){
+    console.log('[loadstart]');
+    document.getElementById('new-status').textContent='Loading...';
+  };
+  
+  newAudEl.onloadedmetadata=function(){
+    console.log('[loadedmetadata] duration:', this.duration);
+    var dur=newFmt(this.duration);
+    document.getElementById('new-dur').textContent=dur;
+    document.getElementById('new-status').textContent='Ready - '+dur;
+  };
+  
+  newAudEl.ontimeupdate=function(){
+    if(!this.duration || isNaN(this.duration)) return;
+    try{
+      var pct=(this.currentTime/this.duration)*100;
+      document.getElementById('new-slider').value=pct;
+      document.getElementById('new-cur').textContent=newFmt(this.currentTime);
+    }catch(e){
+      console.error('timeupdate error:', e);
+    }
+  };
+  
+  newAudEl.onplay=function(){
+    console.log('[play]');
     document.getElementById('new-play-btn').textContent='⏸️';
-  });
-  newAudEl.addEventListener('pause',function(){
+    document.getElementById('new-status').textContent='Playing...';
+  };
+  
+  newAudEl.onpause=function(){
+    console.log('[pause]');
     document.getElementById('new-play-btn').textContent='▶️';
-  });
-  newAudEl.addEventListener('error',function(){
-    console.error('Error:',newAudEl.error?.code);
-    showToast('Error loading');
-  });
+    document.getElementById('new-status').textContent='Paused';
+  };
+  
+  newAudEl.onended=function(){
+    console.log('[ended]');
+    document.getElementById('new-play-btn').textContent='▶️';
+    document.getElementById('new-status').textContent='Finished';
+  };
+  
+  newAudEl.onerror=function(){
+    var code=this.error?.code;
+    var msg='Error '+code;
+    if(code===1)msg='ABORTED';
+    else if(code===2)msg='NETWORK ERROR';
+    else if(code===3)msg='DECODE ERROR';
+    else if(code===4)msg='FORMAT NOT SUPPORTED';
+    console.error('[error]', msg);
+    document.getElementById('new-status').textContent='❌ '+msg;
+    showToast('⚠️ '+msg);
+  };
+  
+  console.log('✓ Audio events configured');
 }
 
 console.log('🎵 Audio Tab ready');
+console.log('💡 Debug tip: Type newDebugAudio() in console for audio diagnostics');
+
+window.newDebugAudio=function(){
+  var el=document.getElementById('new-aud');
+  console.log('=== AUDIO DEBUG ===');
+  console.log('src:',el.src);
+  console.log('duration:',el.duration);
+  console.log('currentTime:',el.currentTime);
+  console.log('paused:',el.paused);
+  console.log('readyState:',el.readyState,'(0=HAVEN\'T_STARTED, 1=METADATA, 2=CURRENT_DATA, 3=FUTURE_DATA, 4=ENOUGH_DATA)');
+  console.log('networkState:',el.networkState,'(0=EMPTY, 1=IDLE, 2=LOADING, 3=NO_SOURCE)');
+  console.log('error:',el.error?.code,'(',el.error?.message,')');
+  console.log('canPlayType(audio/mpeg):',el.canPlayType('audio/mpeg'));
+};
 
 load();render();
 </script>
