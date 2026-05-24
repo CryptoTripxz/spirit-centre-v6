@@ -403,28 +403,41 @@ html,body{height:100%;overflow:hidden;background:#07091A;}
     <div class="sp-sec">
       <div class="sp-sec-lbl sp-sec-toggle" onclick="toggleSection(this)">
         <span class="sp-collapse-icon">▸</span>
-        <span>🎵 Audio Player</span>
-        <span class="sp-sec-lbl-line"></span>
-      </div>
-      <div class="sp-sec-content">
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
-          <button onclick="playAudio(0)" style="padding:10px;background:rgba(123,79,212,0.15);border:1px solid rgba(123,79,212,0.3);color:rgba(255,255,255,0.9);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">🙏 Psalm 91 Meditation</button>
-          <button onclick="playAudio(1)" style="padding:10px;background:rgba(123,79,212,0.15);border:1px solid rgba(123,79,212,0.3);color:rgba(255,255,255,0.9);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">💫 Jeremiah 31:3</button>
-          <button onclick="playAudio(2)" style="padding:10px;background:rgba(123,79,212,0.15);border:1px solid rgba(123,79,212,0.3);color:rgba(255,255,255,0.9);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">✨ Joshua 1:8</button>
-          <button onclick="playAudio(3)" style="padding:10px;background:rgba(123,79,212,0.15);border:1px solid rgba(123,79,212,0.3);color:rgba(255,255,255,0.9);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">🛡️ Psalm 124</button>
-          <button onclick="playAudio(4)" style="padding:10px;background:rgba(123,79,212,0.15);border:1px solid rgba(123,79,212,0.3);color:rgba(255,255,255,0.9);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">💪 Isaiah 41:10</button>
-        </div>
-        <audio id="simple-audio" controls="controls" style="width:100%;"></audio>
-      </div>
-    </div>
-    <div class="sp-sec">
-      <div class="sp-sec-lbl sp-sec-toggle" onclick="toggleSection(this)">
-        <span class="sp-collapse-icon">▸</span>
         <span>Scripture Reading Plan</span>
         <span class="sp-sec-lbl-line"></span>
       </div>
       <div class="sp-sec-content">
         <div class="rp-card" id="rp-card"></div>
+      </div>
+    </div>
+    <div class="sp-sec">
+      <div class="sp-sec-lbl sp-sec-toggle" onclick="toggleSection(this)">
+        <span class="sp-collapse-icon">▸</span>
+        <span>Daily Audio Reading</span>
+        <span class="sp-sec-lbl-line"></span>
+      </div>
+      <div class="sp-sec-content">
+        <div class="sp-audio-card">
+          <div class="sp-audio-label">Sacred Audio</div>
+          <div class="sp-audio-title" id="audio-now-title">Select a track</div>
+          <div class="sp-audio-controls">
+            <button class="sp-audio-play" id="audio-play-btn" onclick="audioToggle()">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="5,3 19,12 5,21"/>
+              </svg>
+            </button>
+            <div class="sp-audio-right">
+              <input type="range" id="audio-seek" class="sp-audio-seek" min="0" max="100" value="0" oninput="audioSeek(this.value)">
+              <div class="sp-audio-time">
+                <span class="sp-audio-cur" id="audio-cur">0:00</span>
+                <span class="sp-audio-dur" id="audio-dur">--:--</span>
+              </div>
+            </div>
+          </div>
+          <div class="sp-audio-tracks" id="sp-audio-tracks"></div>
+          <button class="sp-vbtn" onclick="openAddFavVerseModal()" style="margin-top:12px;width:100%;">💎 Add to Favourites</button>
+          <audio id="sp-audio" crossorigin="anonymous"></audio>
+        </div>
       </div>
     </div>
     <div class="sp-sec">
@@ -489,7 +502,7 @@ html,body{height:100%;overflow:hidden;background:#07091A;}
       </div>
     </div>
     <!-- NEW AUDIO TAB -->
-    <div id="audio-tab" style="display:none;padding:20px 14px;width:100%;height:100%;overflow-y:auto;position:absolute;top:0;left:0;right:0;bottom:82px;background:#07091A;z-index:10;">
+    <div id="audio-tab" style="display:none;padding:20px 14px;">
       <div style="margin-bottom:30px;">
         <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff;margin-bottom:5px;">🎵 Sacred Audio</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);">Five devotional meditations</div>
@@ -1134,24 +1147,15 @@ if(window.location.protocol==='file:'){
 function toggleAudioTab(){
   var main=document.getElementById('main');
   var audioTab=document.getElementById('audio-tab');
-  var isShowingAudio=audioTab.style.display==='block';
+  var isMainVisible=main.style.display!=='none';
   
-  if(isShowingAudio){
-    // Switch back to main
-    audioTab.style.display='none';
-    main.style.display='block';
-  }else{
-    // Switch to audio
-    main.style.display='none';
-    audioTab.style.display='block';
-  }
+  main.style.display=isMainVisible?'none':'block';
+  audioTab.style.display=isMainVisible?'block':'none';
   
   var hdr=document.querySelector('.sp-hdr');
   if(hdr){
-    hdr.style.display=audioTab.style.display==='block'?'none':'block';
+    hdr.style.display=isMainVisible?'none':'block';
   }
-  
-  console.log('Audio tab toggle: '+(audioTab.style.display==='block'?'showing':'hiding'));
 }
 
 /* ═══ NEW AUDIO TAB ═══ */
@@ -1240,22 +1244,6 @@ if(newAudEl){
     showToast('Error loading');
   });
 }
-
-/* SIMPLE AUDIO PLAYER */
-var audioFiles=['Psalm_91.mp3','Jeremiah_31_3_Lamentations_3_22_-_23.mp3','Josh_1_8_1John_3_1_Rom8_1.mp3','Psalm_124.mp3','Isaiah_41_10.mp3'];
-window.playAudio=function(idx){
-  try{
-    var aud=document.getElementById('simple-audio');
-    if(idx>=0&&idx<audioFiles.length){
-      aud.src=audioFiles[idx]+'?v='+Date.now();
-      aud.load();
-      aud.play();
-      showToast('▶️ '+(idx+1)+'/5');
-    }
-  }catch(e){
-    console.error(e);
-  }
-};
 
 console.log('🎵 Audio Tab ready');
 
